@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "experimentalDecorators": true,
+    "noUncheckedIndexedAccess": true,
     "target": "ES2018",
     "module": "ESNext",
     "moduleResolution": "Node",

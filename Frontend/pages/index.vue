@@ -11,7 +11,7 @@
 
             <div class="d-flex overflow-auto">
                 <div
-                    v-for="column in columns"
+                    v-for="column in table"
                     :key="column.id"
                     class="px-3"
                     style="min-width: 360px; max-width: 360px"
@@ -42,7 +42,11 @@
 
                                 <div class="d-flex justify-content-between">
                                     <div>
-                                        {{ task.date }}
+                                        {{
+                                            new Date(
+                                                task.date
+                                            ).toLocaleDateString()
+                                        }}
                                     </div>
 
                                     <div>
@@ -80,143 +84,72 @@ import Vue from "vue";
 import Component from "vue-class-component";
 import draggable from "vuedraggable";
 
+type Table = Array<{
+    id: number;
+    title: string;
+    tasks: Array<{
+        id: number;
+        title: string;
+        type?: string;
+        date: string;
+    }>;
+}>;
+
 @Component({
     components: { draggable },
     created: async function (this: HelloWorld) {
-        // await this.fetchData();
+        await this.fetchData();
     },
 })
 export default class HelloWorld extends Vue {
     loading = false;
 
-    async onMove(a: any) {
-        console.log(a.newIndex);
-        console.log(a.to.id);
+    async fetchData() {
+        const result = await fetch("http://localhost:5259/api/Board");
 
-        this.loading = true;
-        await new Promise((r) => setTimeout(r, 2000));
-        this.loading = false;
+        if (result.ok) {
+            this.table = (await result.json()) as Table;
+        }
     }
 
-    columns = [
-        {
-            id: 1,
-            title: "Backlog",
-            tasks: [
-                {
-                    id: 1,
-                    title: "Add discount code to checkout page",
-                    date: "Sep 14",
-                    type: "Feature Request",
+    async onMove(e: any) {
+        const newIndex = e.newIndex as number;
+        const newCategoryId = parseInt(e.to.id);
+
+        const oldIndex = e.oldIndex as number;
+        const oldCategoryId = parseInt(e.from.id);
+
+        if (oldIndex === newIndex && oldCategoryId === newCategoryId) {
+            return;
+        }
+
+        const tasks =
+            this.table.find((c) => c.id === newCategoryId)?.tasks ?? [];
+        const id = tasks[newIndex]?.id;
+
+        if (typeof id !== "undefined") {
+            this.loading = true;
+
+            // await new Promise((r) => setTimeout(r, 2000));
+
+            const response = await fetch("http://localhost:5259/api/Board", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
                 },
-                {
-                    id: 2,
-                    title: "Provide documentation on integrations",
-                    date: "Sep 12",
-                },
-                {
-                    id: 3,
-                    title: "Design shopping cart dropdown",
-                    date: "Sep 9",
-                    type: "Design",
-                },
-                {
-                    id: 4,
-                    title: "Add discount code to checkout page",
-                    date: "Sep 14",
-                    type: "Feature Request",
-                },
-                {
-                    id: 5,
-                    title: "Test checkout flow",
-                    date: "Sep 15",
-                    type: "QA",
-                },
-            ],
-        },
-        {
-            id: 2,
-            title: "In Progress",
-            tasks: [
-                {
-                    id: 6,
-                    title: "Design shopping cart dropdown",
-                    date: "Sep 9",
-                    type: "Design",
-                },
-                {
-                    id: 7,
-                    title: "Add discount code to checkout page",
-                    date: "Sep 14",
-                    type: "Feature Request",
-                },
-                {
-                    id: 8,
-                    title: "Provide documentation on integrations",
-                    date: "Sep 12",
-                    type: "Backend",
-                },
-            ],
-        },
-        {
-            id: 3,
-            title: "Review",
-            tasks: [
-                {
-                    id: 9,
-                    title: "Provide documentation on integrations",
-                    date: "Sep 12",
-                },
-                {
-                    id: 10,
-                    title: "Design shopping cart dropdown",
-                    date: "Sep 9",
-                    type: "Design",
-                },
-                {
-                    id: 11,
-                    title: "Add discount code to checkout page",
-                    date: "Sep 14",
-                    type: "Feature Request",
-                },
-                {
-                    id: 12,
-                    title: "Design shopping cart dropdown",
-                    date: "Sep 9",
-                    type: "Design",
-                },
-                {
-                    id: 13,
-                    title: "Add discount code to checkout page",
-                    date: "Sep 14",
-                    type: "Feature Request",
-                },
-            ],
-        },
-        {
-            id: 4,
-            title: "Done",
-            tasks: [
-                {
-                    id: 14,
-                    title: "Add discount code to checkout page",
-                    date: "Sep 14",
-                    type: "Feature Request",
-                },
-                {
-                    id: 15,
-                    title: "Design shopping cart dropdown",
-                    date: "Sep 9",
-                    type: "Design",
-                },
-                {
-                    id: 16,
-                    title: "Add discount code to checkout page",
-                    date: "Sep 14",
-                    type: "Feature Request",
-                },
-            ],
-        },
-    ];
+                body: JSON.stringify({
+                    columnId: newCategoryId,
+                    oldColumnId: oldCategoryId,
+                    taskId: id,
+                }),
+            });
+
+            await this.fetchData();
+
+            this.loading = false;
+        }
+    }
+
+    table: Table = [];
 }
 </script>
